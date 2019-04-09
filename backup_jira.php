@@ -6,14 +6,13 @@
         We're running in a cloud environment. For obvious reasons, the provider does not allow shell commands to be executed,
         so powershell or linux scripts are out of the question. This runs straight from php, using cURL.
         
-        2018, April 9: tested with php 5.4 and Jira Cloud 8.
+        2019, April 9: tested with php 7.2 and Jira Cloud 8.
 
         Contributors: Marco Cevat
 
 */
 
 // define a local function that displays the message in the browser without waiting for the end of the process
-
         function LogThis($InpMsg)
             {
                 echo date('Y-m-d H:i:s') . ' ' . $InpMsg . '<br>';
@@ -22,10 +21,10 @@
             }
 
 // define your specific settings
-        $MyDomain           = "YOUR ATLASSIAN DOMAIN";
-        $MyUserId           = "YOUR JIRA EMAIL ADDRESS";
-        $MyPassWord         = "THE MATCHING PASSWORD";
-        $JiraBackupFileName = "../ PATH AND FILENAME";
+        $MyDomain           = "YOUR ATLASSIAN DOMAIN";                                              // like xxxx in xxxx.atlassian.net 
+        $MyUserId           = "YOUR JIRA EMAIL ADDRESS";                                            // use one with admin rights 
+        $MyPassWord         = "THE MATCHING PASSWORD";          
+        $JiraBackupFileName = "../ PATH AND FILENAME";                                              // like c:/users/me/dowloads
         $JiraCookieName     = "jiracookie";                                                         // use a unique name for the cookie that will hold the session ID
         $MaxCheckIntervals  = 100;                                                                  // number of progress check intervals
         $ItervalDuration    = 20;                                                                   // duration of an interval between progress checks
@@ -43,7 +42,7 @@
         curl_setopt($ch, CURLOPT_URL, $TargetURL);                                                  // set cURL options
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
         curl_setopt($ch, CURLOPT_COOKIEJAR, $JiraCookieName);                                       // cookie will hold the logon token
-        curl_setopt($ch, CURLOPT_POSTFIELDS, $PostFields);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, $PostFields);                                          // user and password 
         curl_setopt($ch, CURLOPT_POST, 1);
         curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
 
@@ -60,8 +59,9 @@
         $TargetURL = "https://" . $MyDomain . ".atlassian.net/rest/backup/1/export/runbackup";      // Jira's REST API export request location
         curl_setopt($ch, CURLOPT_URL, $TargetURL);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
-        curl_setopt($ch, CURLOPT_COOKIEJAR, $JiraCookieName);
-        curl_setopt($ch, CURLOPT_POSTFIELDS, "{\"cbAttachments\":\"false\", \"exportToCloud\":\"true\"}"); // don't want attachments; cloud backup format
+        curl_setopt($ch, CURLOPT_COOKIEJAR, $JiraCookieName);                                       
+        // next line: change false->true if you want attachments, but that can only run once every 48 hours 
+        curl_setopt($ch, CURLOPT_POSTFIELDS, "{\"cbAttachments\":\"false\", \"exportToCloud\":\"true\"}"); 
         curl_setopt($ch, CURLOPT_POST, 1);
 
         $result = curl_exec($ch); // execute the request
@@ -113,6 +113,13 @@
                 sleep($ItervalDuration);                                                            // wait for the set interval
 
             } while ($IntervalCounter < $MaxCheckIntervals);
+
+// when the loop end and all intervals have expired, there must be something else wrong
+            if ($IntervalCounter >= $MaxCheckIntervals) 
+                {
+                    echo 'Get Jira backup - waited for more than 30 minutes';
+                    exit(FALSE);
+                }
 
 // download the created file
         $SourceFilename = $Decoded['result'];                                                       // obtain file ID from progress response
